@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+     
+     <!-- 1 扫描注解 -->
+     
+     <!-- 扫描非控制器的注解 -->
+     <!-- <context:component-scan base-package="com.qfedu.service.impl"></context:component-scan> -->
+     <context:component-scan base-package="com.qfedu">
+     <!-- 排除不需要扫描的注解 -->
+     	<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+     </context:component-scan>
+        
+     <!-- 2 配置数据库连接池  druid -->
+     <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+		  init-method="init" destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/j1901" />
+		<property name="username" value="root" />
+		<property name="password" value="8520" />
+		
+		<!-- 配置初始化大小、最小、最大 -->
+		<property name="initialSize" value="5" />
+		<property name="minIdle" value="1" />
+		<property name="maxActive" value="10" />
+		<!-- 配置获取连接等待超时的时间 -->
+		<property name="maxWait" value="10000" />
+		<!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+		<property name="timeBetweenEvictionRunsMillis" value="60000" />
+		<!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+		<property name="minEvictableIdleTimeMillis" value="300000" />
+		<property name="testWhileIdle" value="true" />
+		<!-- 这里建议配置为TRUE，防止取到的连接不可用 -->
+		<property name="testOnBorrow" value="true" />
+		<property name="testOnReturn" value="false" />
+		
+	</bean>
+	
+	<!-- 3 创建SqlSessionFactory对象， 设置mybatis的主配置和映射配置 -->
+	<bean id="sqlSessionFactory"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!--设置数据库连接池 -->
+		<property name="dataSource" ref="dataSource"></property>
+		<!-- 加载mybatis主配置文件  classpath: 编译后文件所在路径 -->
+		<property name="configLocation" value="classpath:mybatis.xml"/>
+		<!-- 加载mybatis映射文件    加载指定路径下，所有的后缀是xml的文件  -->
+		<property name="mapperLocations" value="classpath:com/qfedu/mapping/*.xml"/>
+	</bean>
+	
+	<!-- 4 扫描相关的dao接口 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+		<!-- 设置dao接口所在包 -->
+		<property name="basePackage" value="com.qfedu.dao"></property>
+	</bean>
+	
+	<!-- 5 事务管理对象 -->
+	<bean id="txManage" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+   		<property name="dataSource" ref="dataSource"></property>
+   	</bean>
+	
+	<!-- 6 设置事务的增强 -->
+	<tx:advice id="txAdvice" transaction-manager="txManage">
+   		<tx:attributes>
+   			<tx:method name="add*" read-only="false" propagation="REQUIRED"/>
+   			<tx:method name="delete*" read-only="false"  propagation="REQUIRED"/>
+   			<tx:method name="update*" read-only="false"  propagation="REQUIRED"/>
+   			<tx:method name="find*" read-only="true"  propagation="REQUIRED"/>
+   			<!-- 针对其余的方法 -->
+   			<tx:method name="*" propagation="NOT_SUPPORTED"/>
+   			
+   		</tx:attributes>
+   </tx:advice>
+	
+	<!-- 7 aop的配置 -->
+	<aop:config>
+   		<!-- 切入点 -->
+   		<aop:pointcut expression="execution(* com.qfedu.service.impl.*.*(..))" id="pc"/>
+   
+   		<!-- 通知 -->
+   		<aop:advisor advice-ref="txAdvice" pointcut-ref="pc"/>
+   
+   </aop:config>
+
+
+	<!--shiro相关配置-->
+	<!-- 自定义Realm -->
+	<bean id="myRealm" class="com.qfedu.realm.MyRealm"/>
+
+	<!--<bean id="myRealm" class="com.rr.realm.MyRealm">
+		&lt;!&ndash; 配置密码匹配器 &ndash;&gt;
+		<property name="credentialsMatcher">
+			<bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+				加密算法为MD5
+				<property name="hashAlgorithmName" value="MD5"></property>
+				加密次数
+				<property name="hashIterations" value="1"></property>
+			</bean>
+		</property>
+	</bean>-->
+
+	<!-- 安全管理器 -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="realm" ref="myRealm"/>
+		<property name="cacheManager" ref="cacheManager" />
+		<property name="rememberMeManager" ref="rememberMeManager" />
+	</bean>
+
+	<!-- 缓存管理器 使用Ehcache实现 -->
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		<property name="cacheManagerConfigFile" value="classpath:ehcache.xml" />
+	</bean>
+
+	<!-- Shiro过滤器 -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<!-- Shiro的核心安全接口,这个属性是必须的 -->
+		<property name="securityManager" ref="securityManager"/>
+		<!-- 未登陆时，访问需要认证的资源，则跳转到登录页面的配置 -->
+		<property name="loginUrl" value="/login.jsp"/>
+		<!-- 权限认证失败，则跳转到指定页面 -->
+		<!--<property name="unauthorizedUrl" value="/unauthorized.jsp"/>-->
+		<!--  设置自定义的filter -->
+		<property name="filters">
+			<map>
+				<!--  注意key的值 -->
+				<entry key="perms" value-ref="myPermFilter" />
+			</map>
+		</property>
+		<!-- Shiro连接约束配置,即过滤链的定义 -->
+		<property name="filterChainDefinitions">
+			<value>
+				<!--匿名访问-->
+				/login.do=anon
+				/test1.do=perms["bcd"]
+				<!-- 配置退出的操作 -->
+				/logout.do = logout
+
+				<!--其他任意资源，必须登陆后才能访问-->
+				<!--/** = authc-->
+				<!--使用 rememberMe 的情况下，判断是否可以直接访问时，使用 user 验证-->
+				/**=user
+			</value>
+		</property>
+	</bean>
+	<!-- 手动创建了一个logout过滤器的对象，指定退出后，跳转到的页面，该配置不是必须的
+	 	如果不配置，redirectUrl 对应的值是 /
+	 	id 对应的值，一般使用 logout
+	 -->
+	<bean id="logout" class="org.apache.shiro.web.filter.authc.LogoutFilter">
+		<property name="redirectUrl" value="/login.jsp" />
+	</bean>
+
+	<!-- remenberMe配置 -->
+	<bean id="rememberMeCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+		<constructor-arg value="rememberMe" />
+		<!--cookie 只能通过http协议获取，不能通过js读取-->
+		<property name="httpOnly" value="true" />
+		<!-- 记住7天（单位：秒） -->
+		<property name="maxAge" value="604800" />
+	</bean>
+	<!-- rememberMe管理器 -->
+	<bean id="rememberMeManager" class="org.apache.shiro.web.mgt.CookieRememberMeManager">
+		<property name="cipherKey" value="#{T(org.apache.shiro.codec.Base64).decode('4AvVhmFLUs0KTA3Kprsdag==')}" />
+		<property name="cookie" ref="rememberMeCookie" />
+	</bean>
+
+	<!--  创建自定义的授权处理的对象 -->
+	<bean id="myPermFilter" class="com.qfedu.realm.MyPermsFilter"></bean>
+
+
+</beans>

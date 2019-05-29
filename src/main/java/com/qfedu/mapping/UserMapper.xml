@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.qfedu.dao.UserDao">
+
+	<select id="findByName" parameterType="string" resultType="com.qfedu.entity.User">
+		select * from t_user where username=#{name}
+	</select>
+	
+	<select id="findRoleByName" parameterType="string" resultType="string">
+		select r.rname from t_user u
+		INNER JOIN t_user_role ur
+		on u.uid=ur.uid
+		INNER JOIN t_role r
+		on r.rid=ur.rid
+		where u.username=#{name}
+	</select>
+	
+	<select id="findPermsByName" parameterType="string" resultType="string">
+		select DISTINCT p.pdesc from t_user u
+		INNER JOIN t_user_role ur
+		on u.uid=ur.uid
+		INNER JOIN t_role_permision rp
+		on rp.rid=ur.rid
+		INNER JOIN t_permision p
+		on p.pid=rp.pid
+		where u.username=#{name}
+	</select>
+
+	
+
+</mapper>

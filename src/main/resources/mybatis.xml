@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 配置主配置文件的dtd约束 -->
+<!DOCTYPE configuration
+ PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-config.dtd">
+ 
+<configuration>
+
+
+	<settings>
+	<!-- 使用spring后，如果需要输出mybatis的日志，需要如下的配置 -->
+		<setting name="logImpl" value="log4j"/>
+	</settings>
+
+	<typeAliases>
+		<typeAlias type="com.qfedu.entity.Employee" alias="employee"/>
+	</typeAliases>
+
+	
+</configuration>
